@@ -10,6 +10,7 @@
 int
 exec(char *path, char **argv)
 {
+  //TODO: check what nadav 2.3 means
   char *s, *last;
   int i, off;
   uint argc, sz, sp, ustack[3+MAXARG+1];
@@ -92,6 +93,15 @@ exec(char *path, char **argv)
     if(*s == '/')
       last = s+1;
   safestrcpy(curproc->name, last, sizeof(curproc->name));
+
+
+  //init the pages arrays
+  clear_swapped_pages(curproc);
+  clear_pysc_pages(curproc);
+
+  //remove and create a swap file
+  removeSwapFile(curproc);
+  createSwapFile(curproc);
 
   // Commit to the user image.
   oldpgdir = curproc->pgdir;

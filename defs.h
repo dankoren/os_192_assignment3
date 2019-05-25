@@ -197,6 +197,7 @@ int             up_prtc_bit(void* va);
 int             down_w_bit(void*);
 int             check_w_down(void*);
 int             up_w_bit(void* va);
+void            page_in(struct proc* p,uint va);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))

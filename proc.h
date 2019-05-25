@@ -39,11 +39,16 @@ struct context {
 
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
+struct pysc_page{
+  pte_t* pte;
+  long long creation_time;
+};
+
 
 struct swapped_page{
   pte_t* pte;                   // Address of the pte
   uint offset;                  // Offset of the swapped page in the swapFile
-}
+};
 
 // Per-process state
 struct proc {
@@ -68,10 +73,13 @@ struct proc {
   int num_swapped_pages;
  // int num_total_pages;
 
-  pte_t* swapFile_ptes [MAX_TOTAL_PAGES - MAX_PSYC_PAGES];
-  //struct swapped_page swapped_pages [MAX_TOTAL_PAGES - MAX_PSYC_PAGES];
   //add data structure for maintaing pages in the swapfile and where they are located at that file
   //maybe hash table with key - page number, value - location at file(byte offset)
+  pte_t* swapped_pages [MAX_TOTAL_PAGES - MAX_PSYC_PAGES];
+  struct pysc_page pysc_pages [MAX_PSYC_PAGES];
+  long long page_creation_time_counter;
+
+  //struct swapped_page swapped_pages [MAX_TOTAL_PAGES - MAX_PSYC_PAGES];
 
 };
 

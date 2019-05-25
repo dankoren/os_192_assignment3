@@ -183,6 +183,7 @@ growproc(int n)
 int
 fork(void)
 {
+  //TODO: check what barama means in 2.3 a.
   int i, pid;
   struct proc *np;
   struct proc *curproc = myproc();
@@ -218,16 +219,29 @@ fork(void)
 
   if(createSwapFile(np)!=0)
     panic("createSwapFile failed in userinit");
+  if(curproc->pid > 2){ // if current process is not shell or init
+        np->num_pysc_pages = curproc->num_pysc_pages;
+        np->num_swapped_pages = curproc->num_swapped_pages;
+        np->page_creation_time_counter = curproc->page_creation_time_counter;
+        //copy pysc pages
+        for( i=0; i<curproc->num_pysc_pages; i++){
+            np->pysc_pages[i].pte = curproc->pysc_pages[i].pte;
+        }
+        //copy swaped pages
+        for( i=0; i<curproc->num_swapped_pages; i++){
+            np->swapped_pages[i] = curproc->swapped_pages[i];
+        }
 
-  // copy swap file
-  char buff[BUFF_MAX_SIZE];
-  int bytes_read;
-  int offset = 0;
-  while((bytes_read = readFromSwapFile(curproc, buff, offset, BUFF_MAX_SIZE)) > 0){
-    if(writeToSwapFile(np, buff, offset, bytes_read) < 0)
-      panic("writeToSwapFile failed in fork");
-    offset += bytes_read;
-  }
+        // copy the swap file in chunks of 1024
+        char buff[BUFF_MAX_SIZE];
+        int bytes_read;
+        int offset = 0;
+        while((bytes_read = readFromSwapFile(curproc, buff, offset, BUFF_MAX_SIZE)) > 0){
+          if(writeToSwapFile(np, buff, offset, bytes_read) < 0)
+            panic("writeToSwapFile failed in fork");
+          offset += bytes_read;
+        }
+    }
 
   acquire(&ptable.lock);
 
@@ -263,7 +277,8 @@ exit(void)
   iput(curproc->cwd);
   end_op();
   curproc->cwd = 0;
-  removeSwapFile(curproc);
+  if(removeSwapFile(curproc) == -1)
+    panic("exit: removeSwapFile failed");
   acquire(&ptable.lock);
 
   // Parent might be sleeping in wait().
@@ -312,6 +327,14 @@ wait(void)
         p->name[0] = 0;
         p->killed = 0;
         p->state = UNUSED;
+
+        // Init, 2.3
+        p->num_swapped_pages = 0; //TODO: check if can move to exit
+        p->num_swapped_pages = 0;
+        p->page_creation_time_counter = 0;
+        clear_swapped_pages(p); 
+        clear_pysc_pages(p);
+        
         release(&ptable.lock);
         return pid;
       }
