@@ -6,7 +6,7 @@
 #include "defs.h"
 #include "x86.h"
 #include "elf.h"
-//added something
+//added somethinggit push
 int
 exec(char *path, char **argv)
 {
