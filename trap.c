@@ -80,17 +80,20 @@ trap(struct trapframe *tf)
 
 
   case T_PGFLT:
+    myproc()->page_fault_counter++;
+    //#if SELECTION != NONE
     uint va,va_aligned;
     struct proc* p = myproc();
     if(p->pid > 2){
-      rcr(va); // TODO: validate if it's ok
+      va = rcr2(); // TODO: validate if it's ok
       va_aligned = PGROUNDDOWN(va);
-      pte_t* pte = walkpgdir(p->pgdir, ((void *)va_aligned), 0);
-      if(pte != 0 && ((*pte)&PTE_P) == 0 && ((*pte) & PTE_PG ) != 0 ){ //if pte exists and it's paged out, then page in
+      if(is_paged_out(p,va_aligned)){//if pte exists and it's paged out, then page in
         page_in(p, va_aligned);
         break;
       }
+
     }
+   // #endif
 
   //PAGEBREAK: 13
   default:

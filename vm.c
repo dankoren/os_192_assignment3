@@ -7,6 +7,7 @@
 #include "proc.h"
 #include "elf.h"
 
+
 extern char data[];  // defined by kernel.ld
 pde_t *kpgdir;  // for use in scheduler()
 
@@ -34,7 +35,7 @@ seginit(void)
 
 
 //TODO : Done By Ofir
-int
+/*int
 up_prtc_bit(void* va){
   pte_t *pte;
   if((pte = walkpgdir(myproc()->pgdir, a, 1)) == 0)
@@ -73,7 +74,7 @@ up_w_bit(void* va){
     //return -1;
   *pte = *pte | PTE_W;
   return 0;
-}
+}*/
 
 // ****** SYSCALLS DONE ******
 
@@ -157,7 +158,8 @@ static struct kmap {
   uint phys_start;
   uint phys_end;
   int perm;
-} kmap[] = {
+}
+ kmap[] = {
  { (void*)KERNBASE, 0,             EXTMEM,    PTE_W}, // I/O space
  { (void*)KERNLINK, V2P(KERNLINK), V2P(data), 0},     // kern text+rodata
  { (void*)data,     V2P(data),     PHYSTOP,   PTE_W}, // kern data+memory
@@ -281,74 +283,84 @@ loaduvm(pde_t *pgdir, char *addr, struct inode *ip, uint offset, uint sz)
 // }
 
 /********************Functions for new data structures****************/
-//Returns the index of pte in pysc_pages in p if exists
-//Returns -1 upon failure 
-int find_pysc_page_index(struct proc* p, pte_t* pte){
-  int i;
-  for(i=0; i < p->num_pysc_pages; i++){
-    if(p->pysc_pages[i].pte == pte)
-      return i;
-  }
-  return -1;
-}
-
 //Returns the index of pte in swapped_pages in p if exists
 //Returns -1 upon failure 
 int find_swapped_page_index(struct proc* p, pte_t* pte){
   int i;
-  for(i=0; i < p->num_swapped_pages; i++){
+  for(i=0; i < MAX_SWAPPED_PAGES; i++){
     if(p->swapped_pages[i] == pte)
       return i;
   }
   return -1;
 }
 
+void clear_swapped_pages(struct proc* p){
+  int i;
+  for(i = 0; i < MAX_SWAPPED_PAGES; i++){
+    p->swapped_pages[i] = 0;
+  }
+  p->num_swapped_pages = 0;
+}
+
+//Removes pte from swapped pages in p at index ind
+void remove_swapped_page(struct proc* p, int ind){
+  p->swapped_pages[ind] = 0;
+  p->num_swapped_pages--;
+}
+
+void insert_swapped_page(struct proc* p,int ind ,pte_t* pte){
+  p->swapped_pages[ind] = pte;
+  p->num_swapped_pages++;
+}
+
 //Returns the index of pte in pysc_pages in p if exists
 //Returns -1 upon failure 
 int find_pysc_page_index(struct proc* p, pte_t* pte){
   int i;
-  for(i=0; i < p->num_pysc_pages; i++){
+  for(i=0; i < MAX_PSYC_PAGES; i++){
     if(p->pysc_pages[i].pte == pte)
       return i;
   }
   return -1;
 }
 
-//Inserts pte into physc_pages in p at index ind
-int insert_pysc_page(struct proc* p, pte_t* pte, int ind){
-  struct pysc_page page;
-  page.pte = pte;
-  page.creation_time = p->page_creation_time_counter;
-  p->pysc_pages[ind] = page;
-  p->num_pysc_pages++;
-  p->page_creation_time_counter++;
-  
-}
-
-//Removes pte from swapped pages in p at index ind
-int remove_swapped_page(struct proc* p, int ind){
-  p->swapped_pages[ind] = 0;
-  p->num_swapped_pages--;
-}
-
-void clear_swapped_pages(struct proc* p){
-  int i;
-  for(i=0;i<p->num_swapped_pages;i++){
-    p->swapped_pages[i] = 0;
-  }
-  p->num_swapped_pages = 0;
-}
-
 void clear_pysc_pages(struct proc* p){
   int i;
-  for(i=0;i<p->num_pysc_pages;i++){
+  for(i = 0; i < MAX_PSYC_PAGES; i++){
     p->pysc_pages[i].pte = 0;
     p->pysc_pages[i].creation_time = 0;
+    p->pysc_pages[i].pgdir = 0;
   }
   p->num_pysc_pages = 0;
 }
 
+//Inserts pte into physc_pages in p at index ind
+void insert_pysc_page(struct proc* p,pde_t* pgdir, pte_t* pte, int ind){
+  struct pysc_page my_page;
+  my_page.pte = pte;
+  my_page.creation_time = p->page_creation_time_counter;
+  my_page.pgdir = pgdir;
+  p->pysc_pages[ind] = my_page;
+  p->num_pysc_pages++;
+  p->page_creation_time_counter++;
+}
 
+void remove_pysc_page(struct proc* p, int ind){
+  p->pysc_pages[ind].pte = 0;
+  p->pysc_pages[ind].creation_time = 0;
+  p->pysc_pages[ind].pgdir = 0;
+  p->num_pysc_pages--;
+}
+
+
+int is_paged_out(struct proc* p, uint va){
+  pte_t* pte = walkpgdir(p->pgdir, ((void *)PGROUNDDOWN(va)), 0);
+  if(pte != 0 && ((*pte)&PTE_P) == 0 && ((*pte) & PTE_PG ) != 0 )
+    return 1;
+  else
+    return 0;
+    
+}
 
 /****************************************************************/
 
@@ -359,8 +371,8 @@ void clear_pysc_pages(struct proc* p){
 int find_max_page_creation_time_index(struct proc* p){
     int max_page_index = 0;
     int i;
-    for(i=0; i< p->num_pysc_pages; i++){
-      if(p->pysc_pages[i].creation_time > p->pysc_pages[max_page_index].creation_time)
+    for(i=0; i< MAX_PSYC_PAGES; i++){
+      if(p->pysc_pages[i].pte!= 0 && p->pysc_pages[i].creation_time > p->pysc_pages[max_page_index].creation_time)
         max_page_index = i;
     }
     return max_page_index;
@@ -369,20 +381,22 @@ int find_max_page_creation_time_index(struct proc* p){
 int find_min_page_creation_time_index(struct proc* p){
     int min_page_index = 0;
     int i;
-    for(i=0; i< p->num_pysc_pages; i++){
-      if(p->pysc_pages[i].creation_time < p->pysc_pages[min_page_index].creation_time)
+    for(i=0; i< MAX_PSYC_PAGES; i++){
+      if(p->pysc_pages[i].pte!= 0 && p->pysc_pages[i].creation_time < p->pysc_pages[min_page_index].creation_time)
         min_page_index = i;
     }
     return min_page_index;
 }
 
 int get_page_index_to_swap(struct proc* p){
-  int i;
-  pte_t* pte;
+  
   #if SELECTION == LIFO
     return find_max_page_creation_time_index(p);
   #endif
-  #if SELECTION == SCIFO
+  #if SELECTION == SCFIFO //TODO: change to SCFIFO
+    cprintf("reached get_page_.. SCFIFO\n");
+    int i;
+    pte_t* pte;
     i = find_min_page_creation_time_index(p);
     pte = p->pysc_pages[i].pte;
     while((*pte & PTE_A) == 1){ // if *pte was accessed
@@ -392,9 +406,37 @@ int get_page_index_to_swap(struct proc* p){
     }
     return i;
   #endif
-
+  return 0;
 }
 
+
+
+//Removes a page from RAM and move it to swap file
+//Returns the index of the removed page from the pysc pages
+int page_out(struct proc* p, int swapped_page_index_to_insert){
+
+  int pysc_page_index_to_remove = get_page_index_to_swap(p);
+  cprintf("page_index_to_remove:%d\n",pysc_page_index_to_remove);
+  pte_t* pte = p->pysc_pages[pysc_page_index_to_remove].pte;
+  char* PPN = (char *)(PTE_ADDR(*pte));
+  p->page_out_counter++;
+
+  cprintf("writing to swap file with pid:%d PPN= %x,offset=%d\n",p->pid, PPN, (p->num_swapped_pages)*PGSIZE);
+  writeToSwapFile(p, PPN, (p->num_swapped_pages)*PGSIZE, PGSIZE);
+
+  (*pte) = (*pte) & ~PTE_P; //Sets the Present flag to 0
+  (*pte) = (*pte) | PTE_PG; //Sets the Page_Out flag to 1
+
+  //Add to swapped_pages, and remove from pysc_pages 
+  insert_swapped_page(p,swapped_page_index_to_insert,pte);
+  remove_pysc_page(p,pysc_page_index_to_remove);
+
+  kfree(P2V(PPN));
+
+  lcr3(V2P(p->pgdir)); //Refresh the TLB
+  return pysc_page_index_to_remove;
+
+}
 
 
 
@@ -402,12 +444,11 @@ int get_page_index_to_swap(struct proc* p){
 void page_in(struct proc* p,uint va){
   char* mem;
   int swapped_page_index;
-  int pte_index_to_remove;
   int index_to_insert;
   pte_t* swapped_pte;
   if( (swapped_pte = walkpgdir(p->pgdir, ((void *)va), 0)) == 0)
     panic("page_in: failed fetching pte");
-  if(swapped_page_index = find_swapped_page_index(myproc(), swapped_pte) == -1)
+  if( (swapped_page_index = find_swapped_page_index(myproc(), swapped_pte)) == -1)
         panic("page_in: failed finding swapped page");
   mem = kalloc();
   if(mem == 0){
@@ -425,50 +466,12 @@ void page_in(struct proc* p,uint va){
 
   index_to_insert = -1;
   if(p->num_pysc_pages == MAX_PSYC_PAGES){
-    index_to_insert = page_out(p,pte_index_to_remove, swapped_page_index);
-    p->num_pysc_pages--;
+    index_to_insert = page_out(p, swapped_page_index);
   }
   else{
       index_to_insert = p->num_pysc_pages;
   }
-  insert_pysc_page(p,swapped_pte,index_to_insert);
-}
-
-
-//Removes a page from RAM and move it to swap file
-//Returns the index of the removed page from the pysc pages
-int page_out(struct proc* p, int swapped_page_index_to_insert){
-  //struct proc* curproc = myproc();
-  struct swapped_page page;
-  int pysc_page_index_to_remove = get_page_index_to_swap(p);
-  pte_t* pte = p->pysc_pages[pysc_page_index_to_remove].pte;
-  char* PPN = (char *)(PTE_ADDR(*pte));
-  
-  //page.pte = pte;
-  //page.offset = curproc->num_swapped_pages * PGSIZE;
-
-  //int index = find_empty_cell(curproc);
-
-  writeToSwapFile(p, PPN, (p->num_swapped_pages)*PGSIZE, PGSIZE);
-  //Add to swapped_pages array
-
-  if(swapped_page_index_to_insert == -1){
-    p->swapped_pages[p->num_swapped_pages] = pte;
-  }
-  else{
-    p->swapped_pages[swapped_page_index_to_insert] = pte;
-  }
-  p->num_swapped_pages++;
-
-  //curproc->swapped_pages[index] = page;
- 
-  kfree(P2V(PPN));
-
-  (*pte) = (*pte) & ~PTE_P; //Sets the Present flag to 0
-  (*pte) = (*pte) | PTE_PG; //Sets the Page_Out flag to 1
-  lcr3(v2p (p->pgdir)); //Refresh the TLB
-  return pysc_page_index_to_remove;
-
+  insert_pysc_page(p,p->pgdir,swapped_pte,index_to_insert);
 }
 
 // Allocate page tables and physical memory to grow process from oldsz to
@@ -478,9 +481,9 @@ allocuvm(pde_t *pgdir, uint oldsz, uint newsz)
 {
   char *mem;
   pte_t* pte_to_insert;
-  int index_to_insert,i;
+  int index_to_insert=-1;
   uint a;
-  struct proc* p = get_proc_by_pgdir(pgdir); // TODO: implement
+  struct proc* p = myproc();// TODO: validate is indeed myproc()
 
   if(newsz >= KERNBASE)
     return 0;
@@ -492,15 +495,21 @@ allocuvm(pde_t *pgdir, uint oldsz, uint newsz)
   a = PGROUNDUP(oldsz);
 
   for(; a < newsz; a += PGSIZE){
-    index_to_insert = -1;
-    if(p->num_pysc_pages == MAX_PSYC_PAGES){
-      index_to_insert = page_out(p, -1);
-      p->num_pysc_pages--;
+    #if SELECTION != NONE
+    //cprintf("SELECTION is not NONE in allocuvm\n");
+    if(p->pid > 2 /*&& pgdir != p->pgdir*/){
+      //cprintf("pid is > 2");
+      index_to_insert = -1;
+      //cprintf("p->num_pysc_pages: %d, num swapped: %d\n",p->num_pysc_pages,p->num_swapped_pages);
+      if(p->num_pysc_pages == MAX_PSYC_PAGES){ // if pysc pages is full, page out
+        index_to_insert = page_out(p, p->num_swapped_pages);
+      }
+      else{ // if pysc pages is not full, find empty index in pysc pages
+        if((index_to_insert = find_pysc_page_index(p,0)) == -1)
+          panic("allocuvm: didn't find pte in psyc pages array");
+      }
     }
-    else{
-      if((index_to_insert = find_pysc_page_index(p,0)) == -1)
-        panic("allocuvm: didn't find pte in psyc pages array");
-    }
+    #endif
     mem = kalloc();
     if(mem == 0){
       cprintf("allocuvm out of memory\n");
@@ -514,10 +523,13 @@ allocuvm(pde_t *pgdir, uint oldsz, uint newsz)
       kfree(mem);
       return 0;
     }
-
-    if((pte_to_insert = walkpgdir(p->pgdir, ((void *) PGROUNDDOWN((uint) a)), 0)) == 0)
-      panic("allocuvm failed fetching pte");
-    insert_pysc_page(p,pte_to_insert,index_to_insert); 
+    #if SELECTION != NONE
+    if(p->pid > 2 /*&& pgdir != p->pgdir*/){
+      if((pte_to_insert = walkpgdir(p->pgdir, ((void *) PGROUNDDOWN((uint) a)), 0)) == 0)
+        panic("allocuvm failed fetching pte");
+      insert_pysc_page(p,pgdir,pte_to_insert,index_to_insert); 
+    }
+    #endif
   }
   return newsz;
 }
@@ -533,7 +545,7 @@ deallocuvm(pde_t *pgdir, uint oldsz, uint newsz)
   pte_t *pte;
   uint a, pa;
   int i;
-  struct proc* p = get_proc_by_pgdir(pgdir); 
+  struct proc* p = myproc(); // TODO: validate is indeed myproc()
 
   if(newsz >= oldsz)
     return oldsz;
@@ -549,14 +561,15 @@ deallocuvm(pde_t *pgdir, uint oldsz, uint newsz)
         panic("kfree");
       char *v = P2V(pa);
       kfree(v);
-      if((i = find_pysc_page_index(p,pte)) == -1){
-        panic("deallovuvm: didn't find pte in psyc pages array");
+      #if SELECTION != NONE
+      if(p->pid > 2){
+        if((i = find_pysc_page_index(p,pte)) == -1){
+          panic("deallovuvm: didn't find pte in psyc pages array");
+        }
+        if(p->pysc_pages[i].pgdir == pgdir)
+          remove_pysc_page(p,i);
       }
-
-      p->pysc_pages[i].pte = 0;
-      p->pysc_pages[i].creation_time = 0;
-      p->num_pysc_pages--;
-
+      #endif
       *pte = 0;
     }
   }
@@ -614,9 +627,9 @@ copyuvm(pde_t *pgdir, uint sz)
     if(!(*pte & PTE_P))
       panic("copyuvm: page not present");
 
-    if(*pte & PTE_PG == 1){
+    /*if(*pte & PTE_PG == 1){
 
-    }
+    }*/
 
 
     pa = PTE_ADDR(*pte);
@@ -673,6 +686,20 @@ copyout(pde_t *pgdir, uint va, void *p, uint len)
     va = va0 + PGSIZE;
   }
   return 0;
+}
+
+
+int numberOfProtectedPages(struct proc* p){
+  int i;
+  int protected_pages_counter=0;
+  pte_t* pte;
+  for(i=0; i<MAX_PSYC_PAGES; i++){
+    pte = p->pysc_pages[i].pte;
+    if(pte != 0 && ((*pte) & (PTE_W)) == 0){
+      protected_pages_counter++;
+    }
+  }
+  return protected_pages_counter;
 }
 
 //PAGEBREAK!

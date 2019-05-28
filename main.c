@@ -35,6 +35,7 @@ main(void)
   kinit2(P2V(4*1024*1024), P2V(PHYSTOP)); // must come after startothers()
   userinit();      // first user process
   mpmain();        // finish this processor's setup
+
 }
 
 // Other CPUs jump here from entryother.S.
@@ -52,6 +53,10 @@ static void
 mpmain(void)
 {
   cprintf("cpu%d: starting %d\n", cpuid(), cpuid());
+  #if SELECTION == SCFIFO //TODO: erase it
+    cprintf("helllllo\n");
+  #endif
+
   idtinit();       // load idt register
   xchg(&(mycpu()->started), 1); // tell startothers() we're up
   scheduler();     // start running processes

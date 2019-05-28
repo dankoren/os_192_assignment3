@@ -12,3 +12,6 @@
 #define NBUF         (MAXOPBLOCKS*3)  // size of disk block cache
 #define FSSIZE       1000  // size of file system in blocks
 
+#define MAX_PSYC_PAGES 16
+#define MAX_TOTAL_PAGES 32
+#define MAX_SWAPPED_PAGES 16

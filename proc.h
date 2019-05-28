@@ -1,7 +1,5 @@
 
-#define MAX_PSYC_PAGES 16
-#define MAX_TOTAL_PAGES 32
-#define MAX_SWAPPED_PAGES 16
+
 
 // Per-CPU state
 struct cpu {
@@ -40,15 +38,16 @@ struct context {
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
 struct pysc_page{
-  pte_t* pte;
-  long long creation_time;
+  pte_t* pte;                   // Address of the page table entry
+  long long creation_time;      // Creation time in psyc_pages
+  pde_t* pgdir;                 // Page directory which contains this page
 };
 
 
-struct swapped_page{
+/*struct swapped_page{
   pte_t* pte;                   // Address of the pte
-  uint offset;                  // Offset of the swapped page in the swapFile
-};
+  uint offset;                  // Offset of the swapped page in the swapFile        
+};*/
 
 // Per-process state
 struct proc {
@@ -71,13 +70,12 @@ struct proc {
 
   int num_pysc_pages;
   int num_swapped_pages;
- // int num_total_pages;
 
-  //add data structure for maintaing pages in the swapfile and where they are located at that file
-  //maybe hash table with key - page number, value - location at file(byte offset)
   pte_t* swapped_pages [MAX_TOTAL_PAGES - MAX_PSYC_PAGES];
   struct pysc_page pysc_pages [MAX_PSYC_PAGES];
   long long page_creation_time_counter;
+  int page_fault_counter; // Total number of page faults (debugging)
+  int page_out_counter; // Total number of page outs (debugging)
 
   //struct swapped_page swapped_pages [MAX_TOTAL_PAGES - MAX_PSYC_PAGES];
 

@@ -139,9 +139,6 @@ userinit(void)
   p->tf->esp = PGSIZE;
   p->tf->eip = 0;  // beginning of initcode.S
 
-  if(createSwapFile(p)!=0)
-    panic("createSwapFile failed in userinit");
-
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
 
@@ -217,18 +214,25 @@ fork(void)
 
   pid = np->pid;
 
+
+  #if SELECTION != NONE
+  cprintf("creating swap file for proc No:%d\n",np->pid);
   if(createSwapFile(np)!=0)
-    panic("createSwapFile failed in userinit");
+    panic("createSwapFile failed in fork");
   if(curproc->pid > 2){ // if current process is not shell or init
         np->num_pysc_pages = curproc->num_pysc_pages;
         np->num_swapped_pages = curproc->num_swapped_pages;
         np->page_creation_time_counter = curproc->page_creation_time_counter;
         //copy pysc pages
-        for( i=0; i<curproc->num_pysc_pages; i++){
+        for( i = 0; i < MAX_PSYC_PAGES; i++){
+          if(curproc->pysc_pages[i].pte != 0){
             np->pysc_pages[i].pte = curproc->pysc_pages[i].pte;
+            np->pysc_pages[i].creation_time = 0;
+            np->pysc_pages[i].pgdir = np->pgdir;
+          }
         }
         //copy swaped pages
-        for( i=0; i<curproc->num_swapped_pages; i++){
+        for( i = 0; i < MAX_SWAPPED_PAGES; i++){
             np->swapped_pages[i] = curproc->swapped_pages[i];
         }
 
@@ -242,6 +246,7 @@ fork(void)
           offset += bytes_read;
         }
     }
+  #endif
 
   acquire(&ptable.lock);
 
@@ -334,7 +339,7 @@ wait(void)
         p->page_creation_time_counter = 0;
         clear_swapped_pages(p); 
         clear_pysc_pages(p);
-        
+
         release(&ptable.lock);
         return pid;
       }
@@ -563,7 +568,7 @@ procdump(void)
       state = states[p->state];
     else
       state = "???";
-    cprintf("%d %s %s", p->pid, state, p->name);
+    cprintf("%d %s %d %d %d %d %d %s", p->pid, state,p->num_pysc_pages,p->num_swapped_pages, numberOfProtectedPages(p),p->page_fault_counter,p->page_out_counter , p->name);
     if(p->state == SLEEPING){
       getcallerpcs((uint*)p->context->ebp+2, pc);
       for(i=0; i<10 && pc[i] != 0; i++)

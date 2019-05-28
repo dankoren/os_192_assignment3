@@ -97,7 +97,7 @@ sys_uptime(void)
   return xticks;
 }
 //TODO : OFIR ADDED THIS
-int
+/*int
 sys_up_prtc_bit(void*){
   void* va;
   if(argptr(0,&va, sizeof(va))<0)
@@ -127,4 +127,4 @@ sys_up_w_bit(void*){
   if(argptr(0,&va, sizeof(va))<0)
     return -1;
   return up_w_bit(va);
-}
+}*/

@@ -132,11 +132,11 @@ static int (*syscalls[])(void) = {
 [SYS_link]    sys_link,
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
-[SYS_yield]   sys_yield,
-[SYS_up_prtc_bit]   sys_up_prtc_bit,
+[SYS_yield]   sys_yield
+/*[SYS_up_prtc_bit]   sys_up_prtc_bit,
 [SYS_down_w_bit]   sys_down_w_bit,
 [SYS_check_w_down]   check_w_down,
-[SYS_up_w_bit]   sys_up_w_bit,
+[SYS_up_w_bit]   sys_up_w_bit*/
 };
 
 void

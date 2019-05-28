@@ -1748,6 +1748,10 @@ rand()
 int
 main(int argc, char *argv[])
 {
+  #if SELECTION == SCFIFO
+   printf(1, "scfifo!!!\n");
+  #endif
+
   printf(1, "usertests starting\n");
 
   if(open("usertests.ran", 0) >= 0){

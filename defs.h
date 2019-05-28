@@ -1,3 +1,4 @@
+
 struct buf;
 struct context;
 struct file;
@@ -178,7 +179,7 @@ void            uartinit(void);
 void            uartintr(void);
 void            uartputc(int);
 
-// vm.c
+// vm.c 
 void            seginit(void);
 void            kvmalloc(void);
 pde_t*          setupkvm(void);
@@ -198,6 +199,12 @@ int             down_w_bit(void*);
 int             check_w_down(void*);
 int             up_w_bit(void* va);
 void            page_in(struct proc* p,uint va);
+int             numberOfProtectedPages(struct proc* p);
+void            clear_swapped_pages(struct proc* p);
+void            clear_pysc_pages(struct proc* p);
+int             is_paged_out(struct proc* p, uint va);
+
+
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))
