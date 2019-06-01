@@ -1,0 +1,13 @@
+init: starting sh
+task2_4
+$ Test starting...
+Allocating all memory...
+Validating all memory on scheme...
+Execute CTR + P
+
+1 sleep  0 0 0 0 0 init 80104417 801044c5 80104ee9 80105f0d 80105d0f
+2 sleep  0 0 0 0 0 sh 80104417 801044c5 80104ee9 80105f0d 80105d0f
+3 sleep  16 0 4 0 0 task2_4 801043dc 80105c72 80104ee9 80105f0d 80105d0f
+
+
+Finished Yehonatan Peleg Test, quiting...

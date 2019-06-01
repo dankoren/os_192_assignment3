@@ -28,7 +28,7 @@ char * getMemoryAt(int i);
 
 // ------------------------------------------------------------ TEST CONTROLS --------------------------------------------------------------------------
 
-#define NUM_MEMORY_ALLOCATIONS 10
+#define NUM_MEMORY_ALLOCATIONS 15
 
 char *mem;
 
@@ -50,8 +50,17 @@ int validate_memory_scheme[] =
     6,
     7,
     8,
-    9
-    };
+    9,
+    10,
+    11,
+    12,
+    13,
+    14
+    /*15,
+    16,
+    17,
+    18,
+    19*/};
 
 int main(int argc, char *argv[]){
     printf(1,"Test starting...\n");

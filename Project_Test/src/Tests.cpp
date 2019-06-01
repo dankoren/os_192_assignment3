@@ -126,7 +126,7 @@ bool procceseTest(string testName,unsigned int testNumber){
     createXV6_TestMakefile(testBaseFolder + "/Makefile",testsUserPrograms.at(testNumber),testsDefaultUserPrograms.at(testNumber));
 
     // Creating test make command
-    string test_makefileCommand = "make --makefile=" + testFolder +  "/Makefile clean qemu " + testsExecuteCommandArgs.at(testNumber);
+    string test_makefileCommand = "make --makefile=" + testFolder +  "/Makefile clean qemu-nox " + testsExecuteCommandArgs.at(testNumber);
 
     // Executing test
     if(testsInteractiveExpect.at(testNumber).size() == 0){

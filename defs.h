@@ -203,6 +203,7 @@ int             numberOfProtectedPages(struct proc* p);
 void            clear_swapped_pages(struct proc* p);
 void            clear_pysc_pages(struct proc* p);
 int             is_paged_out(struct proc* p, uint va);
+void print_pysc_ptes();
 
 
 

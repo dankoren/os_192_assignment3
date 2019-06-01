@@ -163,8 +163,11 @@ growproc(int n)
 
   sz = curproc->sz;
   if(n > 0){
-    if((sz = allocuvm(curproc->pgdir, sz, sz + n)) == 0)
+    //cprintf("called growproc!\n");
+    if((sz = allocuvm(curproc->pgdir, sz, sz + n)) == 0){
+      cprintf("called allocuvm from growproc \n");
       return -1;
+    }
   } else if(n < 0){
     if((sz = deallocuvm(curproc->pgdir, sz, sz + n)) == 0)
       return -1;
@@ -189,7 +192,7 @@ fork(void)
   if((np = allocproc()) == 0){
     return -1;
   }
-
+//cprintf("0.fork: curproc pages in pysc: %d\n", curproc->num_pysc_pages);
   // Copy process state from proc.
   if((np->pgdir = copyuvm(curproc->pgdir, curproc->sz)) == 0){
     kfree(np->kstack);
@@ -200,7 +203,7 @@ fork(void)
   np->sz = curproc->sz;
   np->parent = curproc;
   *np->tf = *curproc->tf;
-
+//cprintf("1.fork: curproc pages in pysc: %d\n", curproc->num_pysc_pages);
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
@@ -216,7 +219,7 @@ fork(void)
 
 
   #if SELECTION != NONE
-  cprintf("creating swap file for proc No:%d\n",np->pid);
+  //cprintf("creating swap file for proc No:%d\n",np->pid);
   if(createSwapFile(np)!=0)
     panic("createSwapFile failed in fork");
   if(curproc->pid > 2){ // if current process is not shell or init
@@ -253,7 +256,7 @@ fork(void)
   np->state = RUNNABLE;
 
   release(&ptable.lock);
-
+//cprintf("fork finished\n");
   return pid;
 }
 

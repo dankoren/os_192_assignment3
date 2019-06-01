@@ -81,7 +81,7 @@ trap(struct trapframe *tf)
 
   case T_PGFLT:
     myproc()->page_fault_counter++;
-    //#if SELECTION != NONE
+    #if SELECTION != NONE
     uint va,va_aligned;
     struct proc* p = myproc();
     if(p->pid > 2){
@@ -93,7 +93,7 @@ trap(struct trapframe *tf)
       }
 
     }
-   // #endif
+    #endif
 
   //PAGEBREAK: 13
   default:

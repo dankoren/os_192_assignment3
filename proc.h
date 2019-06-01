@@ -37,7 +37,7 @@ struct context {
 
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
-struct pysc_page{
+struct page_info{
   pte_t* pte;                   // Address of the page table entry
   long long creation_time;      // Creation time in psyc_pages
   pde_t* pgdir;                 // Page directory which contains this page
@@ -71,8 +71,8 @@ struct proc {
   int num_pysc_pages;
   int num_swapped_pages;
 
-  pte_t* swapped_pages [MAX_TOTAL_PAGES - MAX_PSYC_PAGES];
-  struct pysc_page pysc_pages [MAX_PSYC_PAGES];
+  struct page_info swapped_pages [MAX_TOTAL_PAGES - MAX_PSYC_PAGES];
+  struct page_info pysc_pages [MAX_PSYC_PAGES];
   long long page_creation_time_counter;
   int page_fault_counter; // Total number of page faults (debugging)
   int page_out_counter; // Total number of page outs (debugging)

@@ -795,7 +795,6 @@ int
 writeToSwapFile(struct proc * p, char* buffer, uint placeOnFile, uint size)
 {
   p->swapFile->off = placeOnFile;
-  cprintf("writing to swapfile\n");
   return filewrite(p->swapFile, buffer, size);
 
 }
